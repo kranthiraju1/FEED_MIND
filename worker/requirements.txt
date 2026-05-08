@@ -1,0 +1,7 @@
+sqlalchemy[asyncio]==2.0.38
+asyncpg==0.30.0
+redis==5.2.1
+pydantic-settings==2.8.0
+transformers==4.48.3
+httpx==0.28.1
+python-dotenv==1.0.1

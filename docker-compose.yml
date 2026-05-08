@@ -1,0 +1,142 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: feedmind-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - feedmind-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: feedmind-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - feedmind-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: feedmind-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_STREAM_NAME: ${REDIS_STREAM_NAME}
+      REDIS_CONSUMER_GROUP: ${REDIS_CONSUMER_GROUP}
+      REDIS_CACHE_PREFIX: ${REDIS_CACHE_PREFIX}
+      API_HOST: ${API_HOST}
+      API_PORT: ${API_PORT}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      HUGGINGFACE_MODEL: ${HUGGINGFACE_MODEL}
+      EMOTION_MODEL: ${EMOTION_MODEL}
+      EXTERNAL_LLM_PROVIDER: ${EXTERNAL_LLM_PROVIDER}
+      EXTERNAL_LLM_API_KEY: ${EXTERNAL_LLM_API_KEY}
+      EXTERNAL_LLM_MODEL: ${EXTERNAL_LLM_MODEL}
+      ALERT_NEGATIVE_RATIO_THRESHOLD: ${ALERT_NEGATIVE_RATIO_THRESHOLD}
+      ALERT_WINDOW_MINUTES: ${ALERT_WINDOW_MINUTES}
+      ALERT_MIN_POSTS: ${ALERT_MIN_POSTS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - feedmind-net
+
+  ingester:
+    build:
+      context: .
+      dockerfile: ingester/Dockerfile
+    container_name: feedmind-ingester
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      REDIS_STREAM_NAME: ${REDIS_STREAM_NAME}
+      INGEST_RATE_PER_MINUTE: ${INGEST_RATE_PER_MINUTE}
+      FEEDBACK_SOURCE: ${FEEDBACK_SOURCE}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - feedmind-net
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: feedmind-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_STREAM_NAME: ${REDIS_STREAM_NAME}
+      REDIS_CONSUMER_GROUP: ${REDIS_CONSUMER_GROUP}
+      HUGGINGFACE_MODEL: ${HUGGINGFACE_MODEL}
+      EMOTION_MODEL: ${EMOTION_MODEL}
+      EXTERNAL_LLM_PROVIDER: ${EXTERNAL_LLM_PROVIDER}
+      EXTERNAL_LLM_API_KEY: ${EXTERNAL_LLM_API_KEY}
+      EXTERNAL_LLM_MODEL: ${EXTERNAL_LLM_MODEL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - feedmind-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: feedmind-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_WS_URL: ${VITE_WS_URL}
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    networks:
+      - feedmind-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  feedmind-net:
+    driver: bridge
