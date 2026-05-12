@@ -16,7 +16,7 @@ export default function DashboardPage({ summary, distribution, aggregate, feedba
           <TrendChart aggregate={aggregate} />
         </div>
       </div>
-      <div className="two-col">
+      <div className="three-col">
         <LiveFeed feedbacks={feedbacks} />
         <AlertsPanel alerts={alerts} />
       </div>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 from redis.asyncio import Redis
@@ -47,6 +48,20 @@ class SentimentWorker:
                             result = await self.processor.process_message(payload)
                             await self.redis_client.xack(self.stream_name, self.consumer_group, message_id)
                             logger.info("processed %s sentiment=%s emotion=%s", result["feedback_id"], result["sentiment_label"], result["emotion"])
+                            await self.redis_client.publish(
+                                settings.redis_event_channel,
+                                json.dumps({"event": "feedback_analysis", "payload": result}),
+                            )
+                            if result.get("alerts"):
+                                for alert in result["alerts"]:
+                                    await self.redis_client.publish(
+                                        settings.redis_event_channel,
+                                        json.dumps({"event": "alert", "details": alert}),
+                                    )
+                            await self.redis_client.publish(
+                                settings.redis_event_channel,
+                                json.dumps({"event": "metrics_refresh"}),
+                            )
                         except Exception as exc:
                             logger.exception("failed to process message %s: %s", message_id, exc)
             except asyncio.CancelledError:

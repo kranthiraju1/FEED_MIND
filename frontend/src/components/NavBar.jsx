@@ -1,14 +1,21 @@
-export default function NavBar({ page, setPage, connected, health }) {
+export default function NavBar({ currentPath, navigate, connected, health, userRole, onLogout }) {
   const items = [
-    ['home', 'Home'],
-    ['feedback', 'Student Feedback'],
-    ['dashboard', 'Live Dashboard'],
-    ['alerts', 'Alerts'],
+    ['/', 'Home'],
+    ['/feedback', 'Student Feedback'],
+    ['/dashboard', 'Live Dashboard'],
+    ['/notifications', 'Notifications'],
   ]
 
+  if (userRole === 'admin') {
+    items.push(['/admin/alerts', 'Alerts'])
+    items.push(['/admin/notifications', 'Admin Notifications'])
+  }
+
+  const normalizedPath = currentPath === '/home' ? '/' : currentPath
+
   return (
-    <header className="topbar glass" style={{padding: '18px', display: 'flex', flexDirection: 'column', gap: 12}}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+    <header className="topbar glass" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="brand">FeedMind</div>
           <div className="subtitle">AI Powered Real-Time College Feedback Intelligence Platform</div>
@@ -16,11 +23,15 @@ export default function NavBar({ page, setPage, connected, health }) {
         <div className="topbar-right">
           <span className={`badge ${connected ? 'badge-success' : 'badge-muted'}`}>{connected ? 'WebSocket Connected' : 'WebSocket Offline'}</span>
           <span className={`badge ${health === 'ok' ? 'badge-success' : 'badge-warning'}`}>API {health ?? 'loading'}</span>
+          <span className="badge badge-info">{userRole.toUpperCase()}</span>
+          <button type="button" className="secondary-btn small" onClick={onLogout}>
+            {userRole === 'admin' ? 'Logout' : 'Reset'}
+          </button>
         </div>
       </div>
       <nav className="nav-pills">
-        {items.map(([key, label]) => (
-          <button key={key} className={page === key ? 'pill active' : 'pill'} onClick={() => setPage(key)}>
+        {items.map(([path, label]) => (
+          <button key={path} className={normalizedPath === path ? 'pill active' : 'pill'} onClick={() => navigate(path)}>
             {label}
           </button>
         ))}

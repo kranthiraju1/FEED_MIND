@@ -14,8 +14,10 @@ from backend.database.redis_client import get_redis_client
 from backend.database.session import get_db
 from backend.models.feedback import FeedbackAlert, FeedbackPost, SentimentAnalysis
 from backend.services.aggregator import get_aggregate, get_alerts, get_distribution, get_recent_feedback
+from backend.services.notifications import get_notifications
 from backend.services.streaming import publish_to_stream
 from backend.websocket.manager import manager
+from backend.config import settings
 
 router = APIRouter(prefix="/api", tags=["FeedMind"])
 
@@ -45,6 +47,10 @@ async def submit_feedback(payload: FeedbackCreate, db: AsyncSession = Depends(ge
         hall_ticket=payload.hall_ticket,
         department=payload.department,
         year=payload.year,
+        section=payload.section,
+        faculty_name=payload.faculty_name,
+        subject=payload.subject,
+        reported_emotion=payload.emotion,
         category=payload.category,
         rating=payload.rating,
         feedback_message=payload.feedback_message,
@@ -60,12 +66,16 @@ async def submit_feedback(payload: FeedbackCreate, db: AsyncSession = Depends(ge
         "hall_ticket": payload.hall_ticket,
         "department": payload.department,
         "year": str(payload.year),
+        "section": payload.section,
+        "faculty_name": payload.faculty_name,
+        "subject": payload.subject,
+        "emotion": payload.emotion,
         "category": payload.category,
         "rating": str(payload.rating),
         "feedback_message": payload.feedback_message,
         "created_at": created_at.isoformat(),
     }
-    message_id = await publish_to_stream(redis_client, "feedback_stream", stream_payload)
+    message_id = await publish_to_stream(redis_client, settings.redis_stream_name, stream_payload)
     await manager.broadcast_json({"event": "new_feedback", "feedback_id": feedback_id, "message_id": message_id, **stream_payload})
     return {"status": "queued", "feedback_id": feedback_id, "message_id": message_id}
 
@@ -114,8 +124,12 @@ async def list_feedbacks(
                 "hall_ticket": feedback.hall_ticket,
                 "department": feedback.department,
                 "year": feedback.year,
+                "section": feedback.section,
+                "faculty_name": feedback.faculty_name,
+                "subject": feedback.subject,
                 "category": feedback.category,
                 "rating": feedback.rating,
+                "reported_emotion": feedback.reported_emotion,
                 "feedback_message": feedback.feedback_message,
                 "created_at": feedback.created_at.isoformat(),
                 "ingested_at": feedback.ingested_at.isoformat() if feedback.ingested_at else None,
@@ -154,6 +168,11 @@ async def alerts(limit: int = Query(25, ge=1, le=100), db: AsyncSession = Depend
         }
         for alert in rows
     ]}
+
+
+@router.get("/notifications")
+async def notifications(limit: int = Query(25, ge=1, le=100), db: AsyncSession = Depends(get_db)):
+    return {"items": await get_notifications(db, limit=limit)}
 
 
 @router.websocket("/ws/feedmind")

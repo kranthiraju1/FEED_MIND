@@ -6,7 +6,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from backend.api.schemas import FeedbackCreate
 from backend.config import settings
 from backend.models.feedback import FeedbackAlert, FeedbackPost, SentimentAnalysis
 from backend.services.alerting import evaluate_alerts
@@ -30,6 +29,10 @@ class FeedbackProcessor:
                     hall_ticket=message["hall_ticket"],
                     department=message["department"],
                     year=int(message["year"]),
+                    section=message.get("section", "A"),
+                    faculty_name=message.get("faculty_name", "Unknown"),
+                    subject=message.get("subject", "General"),
+                    reported_emotion=message.get("emotion", "neutral"),
                     category=message["category"],
                     rating=int(message["rating"]),
                     feedback_message=message["feedback_message"],
@@ -74,7 +77,23 @@ class FeedbackProcessor:
                 "sentiment_label": analysis.sentiment_label,
                 "confidence_score": analysis.confidence_score,
                 "emotion": analysis.emotion,
-                "alerts": [alert.alert_type for alert in alerts],
+                "reported_emotion": feedback.reported_emotion,
+                "category": feedback.category,
+                "department": feedback.department,
+                "section": feedback.section,
+                "faculty_name": feedback.faculty_name,
+                "subject": feedback.subject,
+                "rating": feedback.rating,
+                "created_at": feedback.created_at.isoformat(),
+                "alerts": [
+                    {
+                        "id": alert.id,
+                        "alert_type": alert.alert_type,
+                        "details": alert.details,
+                        "triggered_at": alert.triggered_at.isoformat() if alert.triggered_at else None,
+                    }
+                    for alert in alerts
+                ],
             }
 
     def _parse_datetime(self, value: str | None) -> datetime:

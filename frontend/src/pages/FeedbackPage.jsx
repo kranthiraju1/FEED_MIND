@@ -1,5 +1,5 @@
-import FeedbackForm from '../components/FeedbackForm'
+import FeedbackFormMulti from '../components/FeedbackFormMulti'
 
-export default function FeedbackPage({ onSubmit }) {
-  return <FeedbackForm onSubmit={onSubmit} />
+export default function FeedbackPage() {
+  return <FeedbackFormMulti />
 }

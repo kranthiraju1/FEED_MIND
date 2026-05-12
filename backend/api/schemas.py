@@ -9,8 +9,12 @@ class FeedbackCreate(BaseModel):
     hall_ticket: str = Field(min_length=3, max_length=100)
     department: str = Field(min_length=2, max_length=120)
     year: int = Field(ge=1, le=6)
+    section: str = Field(min_length=1, max_length=10)
+    faculty_name: str = Field(min_length=2, max_length=255)
+    subject: str = Field(min_length=2, max_length=120)
     category: str = Field(min_length=2, max_length=100)
     rating: int = Field(ge=1, le=5)
+    emotion: str = Field(min_length=1, max_length=50)
     feedback_message: str = Field(min_length=5, max_length=5000)
     created_at: datetime | None = None
 
@@ -22,8 +26,12 @@ class FeedbackRead(BaseModel):
     hall_ticket: str
     department: str
     year: int
+    section: str
+    faculty_name: str
+    subject: str
     category: str
     rating: int
+    reported_emotion: str | None = None
     feedback_message: str
     created_at: datetime
     ingested_at: datetime | None = None

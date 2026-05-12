@@ -25,6 +25,10 @@ export const api = {
   distribution: () => request('/api/sentiment/distribution'),
   aggregate: () => request('/api/sentiment/aggregate'),
   alerts: () => request('/api/alerts'),
+  notifications: (params = {}) => {
+    const search = new URLSearchParams(params)
+    return request(`/api/notifications?${search.toString()}`)
+  },
 }
 
 export const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000/ws/feedmind'

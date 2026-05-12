@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     alert_min_posts: int = 10
 
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    redis_event_channel: str = "feedmind_notifications"
     log_level: str = "INFO"
 
     @property
